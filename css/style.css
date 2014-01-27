@@ -1,0 +1,34 @@
+ul#input-container {
+    background-color: lightgrey;
+}
+
+ul#general-input{
+    background-color: lightsteelblue;
+    display: inline;
+}
+
+
+
+ul.input li {
+    display: inline;
+    list-style-type: none;
+}
+
+ul.input form {
+    display: inline;
+}
+
+
+
+.left {
+    float: left;
+    vertical-align: top;
+}
+
+.imageContainer{
+    padding: 5px;
+}
+
+.imageContainer img{
+
+}
