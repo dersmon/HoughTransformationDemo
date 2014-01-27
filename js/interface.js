@@ -7,14 +7,10 @@ var imageFiles = [{file: "lines.png"},
     {file:"squares.png"},
     {file:"simple-circle.png"},
     {file:"circles.png"}];
-var defaultIndex = 6;
+var defaultIndex = 0;
 
 
 function loadImage(){
-
-    clearResults();
-
-    console.log(this.value);
 
     var selectedImage;
     if(!this.value){
@@ -22,10 +18,6 @@ function loadImage(){
     }  else {
         selectedImage = imageFiles[this.value].file;
     }
-
-
-
-    console.log(selectedImage)
 
     var image = new Image();
     image.src = imageFolder + selectedImage;

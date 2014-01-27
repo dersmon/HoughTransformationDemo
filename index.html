@@ -19,8 +19,8 @@
             <li>
                 Selected Hough Transformation:
                 <select id="hough-select">
-                    <option value="line">Lines</option>
-                    <option value="circle" selected="selected">Circles</option>
+                    <option value="line" selected="selected">Lines</option>
+                    <option value="circle">Circles</option>
                 </select>
             </li>
             <li>
@@ -56,11 +56,12 @@
 <div id="content">
     <div class="row">
         <div id="original-image" class="left imageContainer"></div>
-        <div id="original-image-lines" class="left imageContainer"></div>
-        <div id="accumulator-image-filtered" class="imageContainer"></div>
+
+        <div id="accumulator-image-filtered" class="left imageContainer"></div>
+        <div id="original-image-lines" class="imageContainer"></div>
     </div>
     <div class="row">
-        <div id="accumulator-image" class="left imageContainer"></div>
+        <div id="accumulator-image" class="top"></div>
 
     </div>
 </div>

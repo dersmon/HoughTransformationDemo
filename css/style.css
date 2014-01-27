@@ -22,6 +22,9 @@ ul.input form {
 
 .left {
     float: left;
+}
+
+.top {
     vertical-align: top;
 }
 
