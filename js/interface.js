@@ -7,8 +7,7 @@ var imageFiles = [{file: "lines.png"},
     {file:"squares.png"},
     {file:"simple-circle.png"},
     {file:"circles.png"}];
-var defaultIndex = 0;
-
+var defaultIndex = 6;
 
 function loadImage(){
 
@@ -28,7 +27,6 @@ function loadImage(){
         imageContainer.removeChild(imageContainer.lastChild);
     }
     imageContainer.appendChild(image);
-    image.onload = runApplication;
 }
 
 

@@ -1,18 +1,14 @@
 var selectedThreshold;
 var houghAnalyer;
 
-document.querySelector('#threshold-select').onchange = function(event){
-    if(houghAnalyer){
-        houghAnalyer.selectedThreshold = document.querySelector('#threshold-select').value;
-        houghAnalyer.run();
-    }
-}
+//document.querySelector('#threshold-select').onchange = function(event){
+//    if(houghAnalyer){
+//        houghAnalyer.generateFilteredHoughImage();
+//    }
+//}
 
 function clearResults(){
-    var temp =  document.querySelector('#accumulator-image');
-    while(temp.hasChildNodes()){
-        temp.removeChild(temp.lastChild);
-    }
+
 
     var temp =  document.querySelector('#original-image-lines');
     while(temp.hasChildNodes()){
@@ -23,18 +19,15 @@ function clearResults(){
 function runApplication(){
     var originalImage  = document.querySelector('#original-image').firstChild;
     var requestedType  = document.querySelector('#hough-select').selectedOptions[0].value;
-
-    selectedThreshold = document.querySelector('#threshold-select').value;
     houghAnalyer = new HoughAnalyser(originalImage, requestedType);
-    houghAnalyer.selectedThreshold = document.querySelector('#threshold-select').value;
-
-
-
     houghAnalyer.run();
 }
 
 document.addEventListener("houghImageFinished", function(e) {
-    clearResults();
+    var temp =  document.querySelector('#accumulator-image');
+    while(temp.hasChildNodes()){
+        temp.removeChild(temp.lastChild);
+    }
 
     var unfilteredHoughImage = document.querySelector('#accumulator-image')
     for(var i = 0; i < houghAnalyer.houghImageData.length; i++){
@@ -45,9 +38,6 @@ document.addEventListener("houghImageFinished", function(e) {
         canvas.height = houghAnalyer.houghImageData[i].height;
 
         var context = canvas.getContext('2d');
-
-        context.drawImage(houghAnalyer.originalImage, 0, 0);
-
 
         context.putImageData(houghAnalyer.houghImageData[i], 0, 0);
 
@@ -60,6 +50,8 @@ document.addEventListener("houghImageFinished", function(e) {
     document.querySelector('#accumulator-image').appendChild(unfilteredHoughImage);
 });
 
+
+
 document.addEventListener("filteredHoughImageFinished", function(e){
     var container =  document.querySelector('#accumulator-image-filtered');
     while(container.hasChildNodes()){
@@ -67,29 +59,26 @@ document.addEventListener("filteredHoughImageFinished", function(e){
     }
 
     var canvas = document.createElement('canvas');
-    canvas.width = houghAnalyer.filteredHoughImageData.width;
-    canvas.height = houghAnalyer.filteredHoughImageData.height;
+    canvas.width = houghAnalyer.filteredHoughImageData[0].width;
+    canvas.height = houghAnalyer.filteredHoughImageData[0].height;
 
     var context = canvas.getContext('2d');
-    context.putImageData(houghAnalyer.filteredHoughImageData, 0, 0);
+    context.putImageData(houghAnalyer.filteredHoughImageData[0], 0, 0);
 
     container.appendChild(canvas);
 });
 
 document.addEventListener("resultImageFinished", function(e) {
 
-    var container = document.querySelector('#original-image-lines').appendChild(houghAnalyer.resultImage);
+    var container = document.querySelector('#original-image-lines');
     while(container.hasChildNodes()){
         container.removeChild(container.lastChild);
     }
 
-    var canvas = document.createElement('canvas');
-    canvas.width = houghAnalyer.filteredHoughImageData.width;
-    canvas.height = houghAnalyer.filteredHoughImageData.height;
-
-    var context = canvas.getContext('2d');
-    context.putImageData(houghAnalyer.filteredHoughImageData, 0, 0);
-
-    container.appendChild(canvas);
+    container.appendChild(houghAnalyer.resultImage);
 });
 
+document.addEventListener("status", function(e) {
+    var container = document.querySelector('#status');
+    container.textContent = e.detail.message;
+})
