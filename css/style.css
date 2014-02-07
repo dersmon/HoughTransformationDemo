@@ -1,13 +1,9 @@
 ul#input-container {
-    background-color: lightgrey;
 }
 
 ul#general-input{
-    background-color: lightsteelblue;
     display: inline;
 }
-
-
 
 ul.input li {
     display: inline;
@@ -18,10 +14,12 @@ ul.input form {
     display: inline;
 }
 
-
-
 .left {
     float: left;
+}
+
+.right {
+    float: right;
 }
 
 .top {

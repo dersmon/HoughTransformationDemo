@@ -9,7 +9,25 @@ var imageFiles = [{file: "lines.png"},
     {file:"circles.png"}];
 var defaultIndex = 6;
 
+
+function deleteImages(){
+    var temp =  document.querySelector('#accumulator-image');
+    while(temp.hasChildNodes()){
+        temp.removeChild(temp.lastChild);
+    }
+    var temp =  document.querySelector('#accumulator-image-filtered');
+    while(temp.hasChildNodes()){
+        temp.removeChild(temp.lastChild);
+    }
+    var temp =  document.querySelector('#original-image-lines');
+    while(temp.hasChildNodes()){
+        temp.removeChild(temp.lastChild);
+    }
+}
+
 function loadImage(){
+
+    deleteImages();
 
     var selectedImage;
     if(!this.value){
@@ -27,6 +45,8 @@ function loadImage(){
         imageContainer.removeChild(imageContainer.lastChild);
     }
     imageContainer.appendChild(image);
+
+
 }
 
 

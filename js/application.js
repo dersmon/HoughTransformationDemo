@@ -7,16 +7,10 @@ var houghAnalyer;
 //    }
 //}
 
-function clearResults(){
-
-
-    var temp =  document.querySelector('#original-image-lines');
-    while(temp.hasChildNodes()){
-        temp.removeChild(temp.lastChild);
-    }
-}
 
 function runApplication(){
+    deleteImages();
+
     var originalImage  = document.querySelector('#original-image').firstChild;
     var requestedType  = document.querySelector('#hough-select').selectedOptions[0].value;
     houghAnalyer = new HoughAnalyser(originalImage, requestedType);
@@ -31,8 +25,6 @@ document.addEventListener("houghImageFinished", function(e) {
 
     var unfilteredHoughImage = document.querySelector('#accumulator-image')
     for(var i = 0; i < houghAnalyer.houghImageData.length; i++){
-
-
         var canvas = document.createElement('canvas');
         canvas.width = houghAnalyer.houghImageData[i].width;
         canvas.height = houghAnalyer.houghImageData[i].height;
