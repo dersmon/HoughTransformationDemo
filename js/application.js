@@ -71,6 +71,6 @@ document.addEventListener("resultImageFinished", function(e) {
 });
 
 document.addEventListener("status", function(e) {
-    var container = document.querySelector('#status');
-    container.textContent = e.detail.message;
+    var statusDiv = document.querySelector('#status');
+    statusDiv.textContent = e.detail.message;
 })

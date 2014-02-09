@@ -6,8 +6,13 @@ var imageFiles = [{file: "lines.png"},
     {file:"simple-square2.png"},
     {file:"squares.png"},
     {file:"simple-circle.png"},
-    {file:"circles.png"}];
-var defaultIndex = 6;
+    {file:"simple-circle2.png"},
+    {file:"simple-circle3.png"},
+    {file:"circles.png"},
+    {file:"circles2.png"},
+    {file:"simple-ellipse.png"},
+    {file:"simple-ellipse2.png"}];
+var defaultIndex = 0;
 
 
 function deleteImages(){
@@ -26,7 +31,6 @@ function deleteImages(){
 }
 
 function loadImage(){
-
     deleteImages();
 
     var selectedImage;
@@ -45,8 +49,6 @@ function loadImage(){
         imageContainer.removeChild(imageContainer.lastChild);
     }
     imageContainer.appendChild(image);
-
-
 }
 
 
