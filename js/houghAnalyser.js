@@ -81,9 +81,9 @@ HoughAnalyser.fn = HoughAnalyser.prototype = {
 
     },
     run: function () {
-        this.analyser.generateHoughImages();
-        this.analyser.generateFilteredHoughImage();
-        this.analyser.generateResultImage(this.analyser.filteredHoughArray);
+        this.analyser.start();
+        //this.analyser.generateFilteredHoughImage();
+        //this.analyser.generateResultImage(this.analyser.houghArrayFiltered);
     },
     createSlider: function (container, labelText, id, stepSize, minValue, maxValue, value) {
         var li01 = document.createElement('li');
@@ -149,14 +149,13 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
     centerOriginal: Array(),
     maxDistance: Number,
     houghArray: Array(),
-    filteredHoughArray: Array(),
+    houghArrayFiltered: Array(),
     selectedThreshold: Number,
     init: function (parent) {
         this.parent = parent;
-        this.preCalculate();
         this.parent.clearInput();
+        this.preCalculate();
         this.generateControls();
-
     },
     preCalculate: function () {
         this.radiansStep = Math.PI / this.parent.canvasOriginal.width;
@@ -166,7 +165,7 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
         this.cosine = [];
 
         this.houghArray = [];
-        this.filteredHoughArray = [];
+        this.houghArrayFiltered = [];
 
         for (var currentRadian = 0, i = 0; currentRadian < Math.PI; currentRadian += this.radiansStep, i++) {
             this.radians[i] = currentRadian;
@@ -181,7 +180,52 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
 
         this.maxDistance = Math.sqrt((this.parent.originalImage.width * this.parent.originalImage.width) + (this.parent.originalImage.height * this.parent.originalImage.height)) * 0.5;
     },
-    generateHoughArray: function () {
+    start: function(){
+        this.generateHoughImages();
+        this.generateFilteredHoughImage();
+        this.generateResultImage(this.houghArrayFiltered);
+    },
+    generateHoughImages: function () {
+        if (this.houghArray.length == 0) {
+            this.createHoughArray();
+        }
+        this.parent.houghImageData = [];
+        this.parent.houghImageData[0] = this.generateImageData(this.houghArray);
+
+        document.dispatchEvent(this.parent.houghImageFinishedEvent);
+    },
+    generateFilteredHoughImage: function () {
+        this.filterHoughArray();
+
+        this.parent.filteredHoughImageData[0] = this.generateImageData(this.houghArrayFiltered);
+
+        document.dispatchEvent(this.parent.filteredHoughImageFinishedEvent);
+    },
+    generateResultImage: function (array) {
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+
+        canvas.width = this.parent.originalImage.width;
+        canvas.height = this.parent.originalImage.height;
+
+        context.drawImage(this.parent.originalImage, 0, 0);
+
+        var maxRadius = Math.floor(Math.sqrt((this.parent.originalImage.height * this.parent.originalImage.height) + (this.parent.originalImage.width * this.parent.originalImage.width)));
+
+        for (var i = 0; i < array.length; i++) {
+            for (var j = 0; j < array[0].length; j++) {
+                if (array[i][j] > 0) {
+                    var radiant = this.radians[i];
+                    var radius = j - (maxRadius * 0.5);
+                    this.drawLine(context, radius, -radiant, this.centerOriginal.x, this.centerOriginal.y);
+                }
+            }
+        }
+        this.parent.resultImage = canvas;
+
+        document.dispatchEvent(this.parent.resultImageFinishedEvent);
+    },
+    createHoughArray: function () {
 
         var originalData = this.parent.imageDataOriginal;
         var originalImage = this.parent.originalImage;
@@ -218,54 +262,45 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
 
         this.houghArray = accumulatedMatrix;
     },
-    generateHoughImages: function () {
+    filterHoughArray: function () {
         if (this.houghArray.length == 0) {
-            this.generateHoughArray();
-        }
-        this.parent.houghImageData = [];
-        this.parent.houghImageData[0] = this.generateImageData(this.houghArray);
-
-        document.dispatchEvent(this.parent.houghImageFinishedEvent);
-    },
-    generateFilteredHoughArray: function () {
-        if (this.houghArray.length == 0) {
-            this.generateHoughArray();
+            this.createHoughArray();
         }
 
         this.selectedThreshold = document.querySelector('#threshold-select').value;
 
         for (var i = 0; i < this.houghArray.length; i++) {
-            this.filteredHoughArray[i] = [];
+            this.houghArrayFiltered[i] = [];
             for (var j = 0; j < this.houghArray[0].length; j++) {
                 if (this.houghArray[i][j] < this.selectedThreshold) {
-                    this.filteredHoughArray[i][j] = 0;
+                    this.houghArrayFiltered[i][j] = 0;
                 }
                 else {
-                    this.filteredHoughArray[i][j] = this.houghArray[i][j];
+                    this.houghArrayFiltered[i][j] = this.houghArray[i][j];
                 }
             }
         }
         var tempArray = new Array();
 
-        for (var i = 0; i < this.filteredHoughArray.length; i++) {
+        for (var i = 0; i < this.houghArrayFiltered.length; i++) {
             tempArray[i] = [];
-            for (var j = 0; j < this.filteredHoughArray[0].length; j++) {
-                tempArray[i][j] = this.filteredHoughArray[i][j];
+            for (var j = 0; j < this.houghArrayFiltered[0].length; j++) {
+                tempArray[i][j] = this.houghArrayFiltered[i][j];
             }
         }
 
 
-        for (var i = 0; i < this.filteredHoughArray.length; i++) {
-            for (var j = 0; j < this.filteredHoughArray[0].length; j++) {
+        for (var i = 0; i < this.houghArrayFiltered.length; i++) {
+            for (var j = 0; j < this.houghArrayFiltered[0].length; j++) {
                 for (var k = i - 3; k < i + 3; k++) {
-                    if (k < 0 || k > this.filteredHoughArray.length - 1) {
+                    if (k < 0 || k > this.houghArrayFiltered.length - 1) {
                         continue;
                     }
                     for (var l = j - 3; l < j + 3; l++) {
-                        if (l < 0 || l > this.filteredHoughArray[0].length - 1) {
+                        if (l < 0 || l > this.houghArrayFiltered[0].length - 1) {
                             continue;
                         }
-                        if (this.filteredHoughArray[k][l] > this.filteredHoughArray[i][j]) {
+                        if (this.houghArrayFiltered[k][l] > this.houghArrayFiltered[i][j]) {
 
                             tempArray[i][j] = 0;
                         }
@@ -274,42 +309,11 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
             }
         }
 
-        for (var i = 0; i < this.filteredHoughArray.length; i++) {
-            for (var j = 0; j < this.filteredHoughArray[0].length; j++) {
-                this.filteredHoughArray[i][j] = tempArray[i][j];
+        for (var i = 0; i < this.houghArrayFiltered.length; i++) {
+            for (var j = 0; j < this.houghArrayFiltered[0].length; j++) {
+                this.houghArrayFiltered[i][j] = tempArray[i][j];
             }
         }
-    },
-    generateFilteredHoughImage: function () {
-        this.generateFilteredHoughArray();
-
-        this.parent.filteredHoughImageData[0] = this.generateImageData(this.filteredHoughArray);
-
-        document.dispatchEvent(this.parent.filteredHoughImageFinishedEvent);
-    },
-    generateResultImage: function (array) {
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
-
-        canvas.width = this.parent.originalImage.width;
-        canvas.height = this.parent.originalImage.height;
-
-        context.drawImage(this.parent.originalImage, 0, 0);
-
-        var maxRadius = Math.floor(Math.sqrt((this.parent.originalImage.height * this.parent.originalImage.height) + (this.parent.originalImage.width * this.parent.originalImage.width)));
-
-        for (var i = 0; i < array.length; i++) {
-            for (var j = 0; j < array[0].length; j++) {
-                if (array[i][j] > 0) {
-                    var radiant = this.radians[i];
-                    var radius = j - (maxRadius * 0.5);
-                    this.drawLine(context, radius, -radiant, this.centerOriginal.x, this.centerOriginal.y);
-                }
-            }
-        }
-        this.parent.resultImage = canvas;
-
-        document.dispatchEvent(this.parent.resultImageFinishedEvent);
     },
     generateImageData: function (array) {
         var canvas = document.createElement('canvas');
@@ -353,10 +357,9 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
 //        return resultImageData;
     },
     recalculateThreshold: function () {
-        console.log("generateFiltered called");
-        this.filteredHoughArray = [];
+        this.houghArrayFiltered = [];
         this.generateFilteredHoughImage();
-        this.generateResultImage(this.filteredHoughArray);
+        this.generateResultImage(this.houghArrayFiltered);
     },
     generateControls: function () {
         var container = document.querySelector("#hough-input");
@@ -409,7 +412,6 @@ LineHoughAnalyser.fn = LineHoughAnalyser.prototype = {
             }
         }
         return 255 / maxAccumulated;
-
     }
 }
 
@@ -432,8 +434,6 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
     houghImageData: Array,
     threshold: Number,
     init: function (parent) {
-        console.log("creating new CircleHoughAnalyser");
-
         this.parent = parent;
         this.minRadius = 5;
         this.maxRadius = (this.parent.originalImage.width < this.parent.originalImage.height) ? this.parent.originalImage.width : this.parent.originalImage.height;
@@ -467,6 +467,136 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
         this.overallMax = Number.MIN_VALUE;
 
         this.parent.clearInput(); // TODO: später?
+    },
+    start: function () {
+        this.houghArray = [];
+        this.asynchronousCallsCounter += 1;
+        this.generateHoughArray(this.asynchronousCallsCounter);
+    },
+    startFiltering: function () {
+        this.threshold = document.querySelector('#threshold-select').value;
+        this.houghArrayFiltered = [];
+        this.filteredMax = Number.MIN_VALUE;
+
+        this.calculateRadiusIndex = 0;
+
+        this.asynchronousCallsCounter += 1;
+        this.generateFilteredHoughArray(this.asynchronousCallsCounter);
+    },
+    finish: function(){
+        var canvas = document.createElement('canvas');
+
+        canvas.width = this.parent.originalImage.width;
+        canvas.height = this.parent.originalImage.height;
+
+        var context  = canvas.getContext('2d');
+        this.filteredHoughImageData = context.getImageData(0,0, canvas.width, canvas.height);
+        this.createFilteredHoughImageData();
+        this.parent.filteredHoughImageData[0] = this.filteredHoughImageData;
+        this.parent.resultImage = this.createResultImage();
+
+        this.parent.houghImageFinished();
+        this.parent.filteredHoughImageFinished();
+        this.parent.resultImageFinished();
+
+    },
+    generateHoughArray: function (calculateRequestNumber) {
+        var _this = this;
+        if (calculateRequestNumber != this.asynchronousCallsCounter) {
+            this.houghArray = [];
+            this.calculateRadiusIndex = 0;
+            this.overallMax = Number.MIN_VALUE;
+            return;
+        }
+
+        var percentageDone;
+        if (this.calculateRadiusIndex == 0) {
+            percentageDone = 0;
+        } else {
+            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
+        }
+
+        this.parent.updateStatus("Accumulating data, " + percentageDone + "% done.");
+
+        this.calculateHoughArray(this.calculateRadiusIndex);
+
+        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
+            setTimeout(function () {
+                _this.generateHoughArray(calculateRequestNumber);
+            }, 0);
+        } else {
+            this.parent.updateStatus("");
+            this.houghImageData = [];
+            this.calculateRadiusIndex = 0;
+
+            this.asynchronousCallsCounter += 1;
+            this.generateHoughImageData(this.asynchronousCallsCounter);
+        }
+    },
+    generateHoughImageData: function(calculateRequestNumber){
+        var _this = this;
+
+        if (calculateRequestNumber != this.asynchronousCallsCounter) {
+            this.houghImageData = [];
+            return;
+        }
+        var percentageDone;
+        if (this.calculateRadiusIndex == 0) {
+            percentageDone = 0;
+        } else {
+            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
+        }
+
+        this.parent.updateStatus("Generating accumulator-images: " + percentageDone + "% done.");
+
+        this.calculateHoughImageData(this.houghArray, this.overallMax, this.calculateRadiusIndex);
+
+        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
+            setTimeout(function () {
+                _this.generateHoughImageData(calculateRequestNumber);
+            }, 0);
+        } else {
+            this.parent.updateStatus("");
+
+            this.parent.houghImageData = [];
+            this.parent.houghImageData[0] = this.houghImageData[0];
+
+            var radiusSelector = this.parent.createSlider(null, "Select radius: ", "hough-image-select", 1, 0, this.maxRadius - this.minRadius - 1, 0);
+            var thresholdSelector = this.parent.createSlider(null, "Threshold: ", "threshold-select", 1,  10, this.overallMax, this.overallMax - 5);
+
+            radiusSelector.oninput = this.selectHoughImage.bind(this);
+            thresholdSelector.onchange = this.startFiltering.bind(this);
+
+            this.startFiltering();
+        }
+    },
+    generateFilteredHoughArray: function (calculateRequestNumber) {
+        var _this = this;
+
+        if (calculateRequestNumber != this.asynchronousCallsCounter) {
+            this.houghArrayFiltered = [];
+            this.filteredMax = Number.MIN_VALUE;
+            return;
+        }
+        var percentageDone;
+        if (this.calculateRadiusIndex == 0) {
+            percentageDone = 0;
+        } else {
+            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
+        }
+
+        this.parent.updateStatus("Filtering accumulated data, " + percentageDone + "% done.");
+
+        this.calculateFilteredArray();
+
+        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
+            setTimeout(function () {
+                _this.generateFilteredHoughArray(calculateRequestNumber);
+            }, 0);
+        } else {
+            this.parent.updateStatus("");
+            this.finish();
+        }
     },
     calculateHoughArray: function (startIndex) {
         var endIndex = startIndex + this.calculateStepSize;
@@ -509,42 +639,39 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
         }
         this.calculateRadiusIndex = endIndex;
     },
-    generateHoughArray: function (calculateRequestNumber) {
-        var _this = this;
-        if (calculateRequestNumber != this.asynchronousCallsCounter) {
-            this.houghArray = [];
-            this.calculateRadiusIndex = 0;
-            this.overallMax = Number.MIN_VALUE;
+    calculateHoughImageData: function (array, maxValue, startIndex) {
+        var endIndex = startIndex + this.calculateStepSize;
+
+        if (endIndex > this.maxRadius - this.minRadius) {
+            endIndex = this.maxRadius - this.minRadius;
         }
 
-        var percentageDone;
-        if (this.calculateRadiusIndex == 0) {
-            percentageDone = 0;
-        } else {
-            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
+        var canvas = document.createElement("canvas");
+
+        canvas.width = this.parent.canvasOriginal.width;
+        canvas.height = this.parent.canvasOriginal.height;
+
+        var context = canvas.getContext('2d');
+        context.drawImage(this.parent.originalImage, 0, 0);
+
+        var factor = 255 / maxValue;
+
+        for (var i = startIndex; i < endIndex; i++) {
+            var imageData = context.createImageData(canvas.width, canvas.height);
+            for (var resultY = 0, index = 0; resultY < canvas.height; resultY++) {
+
+                for (var resultX = 0; resultX < canvas.width; resultX++, index += 4) {
+                    if (!array[i] || !array[i][resultX] || !array[i][resultX][resultY]) {
+                        imageData.data[index] = imageData.data[index + 1] = imageData.data[index + 2] = 0;
+                    } else {
+                        imageData.data[index] = imageData.data[index + 1] = imageData.data[index + 2] = array[i][resultX][resultY] * factor;
+                    }
+                    imageData.data[index + 3] = 255;
+                }
+            }
+            this.houghImageData[i] = imageData;
         }
-
-        this.parent.updateStatus("Calculating hough-array, " + percentageDone + "% done.");
-
-        this.calculateHoughArray(this.calculateRadiusIndex);
-
-        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
-            setTimeout(function () {
-                _this.generateHoughArray(calculateRequestNumber);
-            }, 0);
-        } else {
-            this.parent.updateStatus("");
-            this.houghImageData = [];
-            this.calculateRadiusIndex = 0;
-
-            this.asynchronousCallsCounter += 1;
-            this.generateHoughImageData(this.asynchronousCallsCounter);
-        }
-    },
-    generateHoughImages: function () {
-        this.houghArray = [];
-        this.asynchronousCallsCounter += 1;
-        this.generateHoughArray(this.asynchronousCallsCounter);
+        this.calculateRadiusIndex = endIndex;
     },
     calculateFilteredArray: function () {
         var startIndex = this.calculateRadiusIndex;
@@ -618,138 +745,7 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
             }
         }
     },
-    applyThreshold: function (calculateRequestNumber) {
-        var _this = this;
-
-        if (calculateRequestNumber != this.asynchronousCallsCounter) {
-            console.log("resetting calculation stats")
-            this.houghArrayFiltered = [];
-            this.filteredMax = Number.MIN_VALUE;
-            return;
-        }
-        var percentageDone;
-        if (this.calculateRadiusIndex == 0) {
-            percentageDone = 0;
-        } else {
-            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
-        }
-
-        this.parent.updateStatus("Calculating filtered hough-array, " + percentageDone + "% done.");
-
-        this.calculateFilteredArray();
-
-        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
-            setTimeout(function () {
-                _this.applyThreshold(calculateRequestNumber);
-            }, 0);
-        } else {
-            this.parent.updateStatus("");
-            this.generateFilteredHoughImageDataOuter();
-        }
-    },
-    start_creatingFilteredHoughArray: function () {
-        this.threshold = document.querySelector('#threshold-select').value;
-
-        this.houghArrayFiltered = [];
-
-        this.filteredMax = Number.MIN_VALUE;
-
-        this.calculateRadiusIndex = 0;
-
-        this.asynchronousCallsCounter += 1;
-        this.applyThreshold(this.asynchronousCallsCounter);
-    },
-    generateHoughImageData: function(calculateRequestNumber){
-        var _this = this;
-
-        if (calculateRequestNumber != this.asynchronousCallsCounter) {
-            console.log("resetting calculation stats")
-            this.houghImageData = [];
-            return;
-        }
-        var percentageDone;
-        if (this.calculateRadiusIndex == 0) {
-            percentageDone = 0;
-        } else {
-            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
-        }
-
-        this.parent.updateStatus("Generating hough images: " + percentageDone + "% done.");
-
-       this.calculateHoughImageData(this.houghArray, this.overallMax, this.calculateRadiusIndex);
-
-        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
-            setTimeout(function () {
-                _this.generateHoughImageData(calculateRequestNumber);
-            }, 0);
-        } else {
-            this.parent.updateStatus("");
-
-            this.parent.houghImageData = [];
-            this.parent.houghImageData[0] = this.houghImageData[0];
-
-            this.parent.houghImageFinished();
-            var radiusSelector = this.parent.createSlider(null, "Select radius: ", "hough-image-select", 1, 0, this.maxRadius - this.minRadius - 1, 0);
-            var thresholdSelector = this.parent.createSlider(null, "Threshold: ", "threshold-select", 1,  10, this.overallMax, this.overallMax - 5);
-
-            radiusSelector.oninput = this.selectHoughImage.bind(this);
-            thresholdSelector.onchange = this.start_creatingFilteredHoughArray.bind(this);
-
-            this.start_creatingFilteredHoughArray();
-        }
-    },
-    calculateHoughImageData: function (array, maxValue, startIndex) {
-        var endIndex = startIndex + this.calculateStepSize;
-
-        if (endIndex > this.maxRadius - this.minRadius) {
-            endIndex = this.maxRadius - this.minRadius;
-        }
-
-        var canvas = document.createElement("canvas");
-
-        canvas.width = this.parent.canvasOriginal.width;
-        canvas.height = this.parent.canvasOriginal.height;
-
-        var context = canvas.getContext('2d');
-        context.drawImage(this.parent.originalImage, 0, 0);
-
-        var factor = 255 / maxValue;
-
-        for (var i = startIndex; i < endIndex; i++) {
-            var imageData = context.createImageData(canvas.width, canvas.height);
-            for (var resultY = 0, index = 0; resultY < canvas.height; resultY++) {
-
-                for (var resultX = 0; resultX < canvas.width; resultX++, index += 4) {
-                    if (!array[i] || !array[i][resultX] || !array[i][resultX][resultY]) {
-                        imageData.data[index] = imageData.data[index + 1] = imageData.data[index + 2] = 0;
-                    } else {
-                        imageData.data[index] = imageData.data[index + 1] = imageData.data[index + 2] = array[i][resultX][resultY] * factor;
-                    }
-                    imageData.data[index + 3] = 255;
-                }
-            }
-            this.houghImageData[i] = imageData;
-        }
-        this.calculateRadiusIndex = endIndex;
-    },
-    generateFilteredHoughImageDataOuter: function(){
-        var canvas = document.createElement('canvas');
-
-        canvas.width = this.parent.originalImage.width;
-        canvas.height = this.parent.originalImage.height;
-
-        var context  = canvas.getContext('2d');
-        this.filteredHoughImageData = context.getImageData(0,0, canvas.width, canvas.height);
-        this.calculatedFilteredHoughImageData();
-
-        this.parent.filteredHoughImageData[0] = this.filteredHoughImageData;
-        this.parent.filteredHoughImageFinished();
-
-        this.parent.resultImage = this.createResultImage();
-        this.parent.resultImageFinished();
-
-    },
-    calculatedFilteredHoughImageData: function(){
+    createFilteredHoughImageData: function(){
 
         var canvas = document.createElement("canvas");
 
@@ -803,7 +799,11 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
                 }
 
                 var index = ((yOriginal * canvas.width) + xOriginal) * 4;
-                imageData.data[index] = filteredItem.accumulated * factor;
+
+                if(imageData.data[index] < filteredItem.accumulated * factor){
+                    imageData.data[index] = filteredItem.accumulated * factor;
+                }
+
                 imageData.data[index + 1] = imageData.data[index + 2] = 0;
             }
         }
@@ -820,7 +820,7 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
             this.parent.houghImageData = [];
             this.parent.houghImageData[0] = this.houghImageData[index];
         }
-        document.dispatchEvent(this.parent.houghImageFinishedEvent);
+        this.parent.houghImageFinished();
     }
 }
 
@@ -831,10 +831,13 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
     edgePixels: Array,
     numEdgePixels: Number,
     detectedEllipses: Array,
+    finalEllipses: Array,
+    maxAccumulated: Number,
+    threshold: Number,
     init: function(parent){
         this.parent = parent;
         this.aMin = 10;
-        this.relativeVoteMin = 0.45;
+        this.relativeVoteMin = 0.25;
         this.numEdgePixels = 0;
         this.edgePixels = [];
 
@@ -855,10 +858,11 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
         this.numEdgePixels = this.edgePixels.length;
 
     },
-    generateHoughImages: function(){
+    start: function(){
         this.detectedEllipses = [];
+        this.finalEllipses = [];
+        this.maxAccumulated = 0;
         this.findEllipses(0);
-
     },
     findEllipses: function(startIndex){
         var _this = this;
@@ -870,13 +874,9 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             percentageDone = Math.round((startIndex / (this.numEdgePixels)) * 100);
         }
 
-        var myEvent = new CustomEvent("progress", {
-            detail: {
-                message: new String("Searching for ellipses, " + percentageDone + "% done.")
-            }
-        });
+        this.parent.updateStatus("Searching for ellipses, " + percentageDone + "% done.");
 
-        document.dispatchEvent(myEvent);
+
 
         this.extractEllipseParameters(startIndex);
 
@@ -886,24 +886,178 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
                 _this.findEllipses(startIndex + 1);
             }, 0);
         } else {
-            var myEvent = new CustomEvent("progress", {
-                detail: {
-                    message: ("Found ellipses: " + this.detectedEllipses.length)
+            this.threshold = this.maxAccumulated - 5;
+            this.generateControls();
+            this.filterEllipses(this.detectedEllipses);
+            this.parent.updateStatus("Found ellipses: " + this.detectedEllipses.length + ", filtered: " + this.finalEllipses.length);
+
+
+            console.log("Found ellipses: " + this.finalEllipses.length);
+            this.drawResult();
+//            for(var i = 0; i < this.detectedEllipses.length; i++){
+//                var current = this.detectedEllipses[i];
+//
+//                console.log("center: " + current.o.x + " " + current.o.y);
+//                console.log("w: " + current.t.x + " " + current.t.y + ", u: " + current.u.x + " " + current.u.y);
+//                console.log("alpha: " + current.alpha + ", beta: " + current.beta + ", theta: " + current.theta);
+//                console.log("accumulator: " + current.accumulator[current.beta[0]] + ", circumference: " + current.circumference[current.beta[0]]);
+//            }
+        }
+
+    },
+    drawResult: function(){
+        var canvas = document.createElement('canvas');
+        canvas.width = this.parent.originalImage.width;
+        canvas.height = this.parent.originalImage.height;
+
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(this.parent.originalImage, 0, 0);
+
+        for(var ellipseIndex = 0; ellipseIndex < this.finalEllipses.length; ellipseIndex++){
+
+            var current = this.finalEllipses[ellipseIndex];
+
+            ctx.beginPath();
+            for (var i = 0; i < 2 * Math.PI; i += 0.01 ) {
+                var xPos = current.o.x - (current.beta * Math.sin(i)) * Math.sin(current.theta) + (current.alpha * Math.cos(i)) * Math.cos(current.theta);
+                var yPos = current.o.y + (current.alpha * Math.cos(i)) * Math.sin(current.theta) + (current.beta * Math.sin(i)) * Math.cos(current.theta);
+
+                if (i == 0) {
+                    ctx.moveTo(xPos, yPos);
+                } else {
+                    ctx.lineTo(xPos, yPos);
                 }
-            });
-            document.dispatchEvent(myEvent);
+            }
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#FF0000";
+            ctx.stroke();
+            ctx.closePath();
+        }
 
-            console.log("Found ellipses: " + this.detectedEllipses.length);
-            for(var i = 0; i < this.detectedEllipses.length; i++){
-                var current = this.detectedEllipses[i];
+        this.parent.resultImage = canvas;
+        this.parent.resultImageFinished();
 
-                console.log("center: " + current.o.x + " " + current.o.y);
-                console.log("w: " + current.t.x + " " + current.t.y + ", u: " + current.u.x + " " + current.u.y);
-                console.log("alpha: " + current.alpha + ", beta: " + current.beta + ", theta: " + current.theta);
-                console.log("accumulator: " + current.accumulator[current.beta[0]] + ", circumference: " + current.circumference[current.beta[0]]);
+    },
+    filterEllipses: function(input){
+
+        if(input.length == 0){
+            return;
+        }
+
+        var first = input[0];
+
+        var remaining = [];
+        var closeNeighbours = [];
+        var heighestAccumulatorValue = first.accumulated;
+
+        closeNeighbours.push(first);
+        for(var i = 1; i < input.length; i++){
+            var close = false;
+            var current = input[i];
+
+            if(Math.sqrt(Math.pow(current.o.x - first.o.x, 2) + Math.pow(current.o.y - first.o.y, 2)) < 20){
+                if(Math.abs(current.alpha - first.alpha) < 20 && Math.abs(current.beta - first.beta) < 20){
+                    if(Math.abs(current.theta - first.theta) < Math.PI / 360){
+                        if(heighestAccumulatorValue < current.accumulated){
+                            heighestAccumulatorValue = current.accumulated;
+                        }
+                        close = true;
+                    }
+                }
+            }
+
+            if(close == true){
+                closeNeighbours.push(current);
+            } else {
+                remaining.push(current);
             }
         }
 
+        var filteredNeighbours = [];
+
+        for(var i = 0; i < closeNeighbours.length; i++){
+
+            var current = closeNeighbours[i];
+            if(current.accumulated < this.threshold){
+                continue;
+            }
+            if(current.accumulated == heighestAccumulatorValue){
+                filteredNeighbours.push(current);
+            }
+        }
+
+        var finalEllipse = [];
+
+        if(filteredNeighbours.length == 1){
+            finalEllipse = filteredNeighbours[0];
+        } else {
+            var centerSum = [];
+
+            centerSum.x = 0;
+            centerSum.y = 0;
+
+            var tSum = [];
+            tSum.x = 0;
+            tSum.y = 0;
+
+            var uSum = [];
+            uSum.x = 0;
+            uSum.y = 0;
+
+            var alphaSum = 0;
+            var betaSum = 0;
+            var thetaSum = 0;
+
+            for(var i = 0; i < filteredNeighbours.length; i++){
+                var current = closeNeighbours[i];
+
+                centerSum.x += current.o.x;
+                centerSum.y += current.o.y;
+
+                tSum.x += current.t.x;
+                tSum.y += current.t.y;
+
+                uSum.x += current.u.x;
+                uSum.y += current.u.y;
+
+                alphaSum += current.alpha;
+                betaSum += current.beta;
+                thetaSum += current.theta;
+            }
+
+            finalEllipse.o = [];
+            finalEllipse.t = [];
+            finalEllipse.u = [];
+
+
+
+            finalEllipse.o.x =  Math.round(centerSum.x / filteredNeighbours.length);
+            finalEllipse.o.y =  Math.round(centerSum.y / filteredNeighbours.length);
+
+            finalEllipse.t.x =  Math.round(tSum.x / filteredNeighbours.length);
+            finalEllipse.t.y =  Math.round(tSum.y / filteredNeighbours.length);
+
+            finalEllipse.u.x =  Math.round(uSum.x / filteredNeighbours.length);
+            finalEllipse.u.y =  Math.round(uSum.y / filteredNeighbours.length);
+
+            finalEllipse.alpha =  Math.round(alphaSum / filteredNeighbours.length);
+            finalEllipse.beta =  Math.round(betaSum / filteredNeighbours.length);
+            finalEllipse.theta = Math.round(thetaSum / filteredNeighbours.length);
+
+            finalEllipse.accumulated = heighestAccumulatorValue;
+        }
+
+        if(!finalEllipse.o.x){
+            console.log("zu geringer threshold");
+        } else {
+            this.finalEllipses.push(finalEllipse);
+        }
+
+
+
+        if(remaining.length > 0){
+            this.filterEllipses(remaining);
+        }
     },
     extractEllipseParameters: function(inputIndex){
         var t = this.edgePixels[inputIndex];
@@ -920,8 +1074,7 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             var ox = (t.x + u.x) * 0.5;
             var oy = (t.y + u.y) * 0.5;
 
-
-            var alphaSquare = alpha * alpha;
+            var alphaSquare = roundedAlpha * roundedAlpha;
             var theta = Math.atan2((u.y - t.y), (u.x - t.x));
 
             //var theta = Math.atan((u.y - t.y) / (u.x - t.x));
@@ -967,7 +1120,6 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             var countNull = 0;
             var maxValue = Number.MIN_VALUE;
             var maxValueIndex = -1;
-            var betaI = [];
             for(var j = 0; j < accumulator.length; j++){
 
                 if(!accumulator[j]){
@@ -975,36 +1127,55 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
                     continue;
                 }
 
-                if(accumulator[j] > maxValue){
-                    maxValue = accumulator[j];
-                    maxValueIndex = j;
+                if(accumulator[j] >  this.maxAccumulated ){
+                    this.maxAccumulated = accumulator[j];
                 }
 
 
                 var validation = accumulator[j] - circumferenceAssumed[j] * this.relativeVoteMin;
                 if (validation > 0){
-                    betaI.push(j);
+                    var ellipse = [];
+
+                    ellipse.o = [];
+                    ellipse.o.x = ox;
+                    ellipse.o.y = oy;
+                    ellipse.alpha = roundedAlpha;
+                    ellipse.theta = theta;
+                    ellipse.beta = j;
+                    ellipse.t = t;
+                    ellipse.u = u;
+                    ellipse.accumulated = accumulator[j];
+                    ellipse.circumference = circumferenceAssumed[j];
+
+                    this.detectedEllipses.push(ellipse);
                 }
             }
-
-            if(betaI.length > 0){
-                var ellipse = [];
-
-                ellipse.o = [];
-                ellipse.o.x = ox;
-                ellipse.o.y = oy;
-                ellipse.alpha = roundedAlpha;
-                ellipse.theta = theta;
-                ellipse.beta = betaI;
-                ellipse.t = t;
-                ellipse.u = u;
-                ellipse.accumulator = accumulator;
-                ellipse.circumference = circumferenceAssumed;
-
-                this.detectedEllipses.push(ellipse);
-
-            }
         }
+    },
+    setThreshold: function(){
+        this.threshold = document.querySelector('#threshold-select').value;
+
+        this.finalEllipses = [];
+
+        this.filterEllipses(this.detectedEllipses);
+        this.parent.updateStatus("Found ellipses: " + this.detectedEllipses.length + ", filtered: " + this.finalEllipses.length);
+
+
+        console.log("Found ellipses: " + this.finalEllipses.length);
+        this.drawResult();
+    },
+    generateControls: function () {
+        var container = document.querySelector("#hough-input");
+        while (container.hasChildNodes()) {
+            container.removeChild(container.lastChild);
+        }
+
+        console.log(this.maxAccumulated, this.threshold);
+
+        this.parent.createSlider(container, "Threshold", "threshold-select", 1, 10, this.maxAccumulated, this.threshold);
+
+
+        document.querySelector('#threshold-select').onchange = this.setThreshold.bind(this);
     }
 }
 
