@@ -9,14 +9,14 @@ var imageFiles = [{file: "lines.png"},
     {file:"circles01.png"},
     {file:"circles02.png"},
     {file:"circles03.png"},
-    {file:"ellipse01.png"},
+    {file:"ellipse01.png"},  // 9
     {file:"ellipse02.png"},
     {file:"ellipses.png"},
     {file:"rectangle01.png"},
     {file:"rectangle02.png"},
     {file:"rectangles.png"},
     {file:"siegel.png"}];
-var defaultIndex = 0;
+var defaultIndex = 9;
 
 
 function deleteImages(){
@@ -36,6 +36,8 @@ function deleteImages(){
 
 function loadImage(){
     deleteImages();
+    var statusDiv = document.querySelector('#status');
+    statusDiv.innerHTML  = "";
 
     var selectedImage;
     if(!this.value){
@@ -116,6 +118,7 @@ document.addEventListener("houghImageFinished", function(e) {
         div.appendChild(canvas);
         unfilteredHoughImage.appendChild(div);
     }
+    console.log("appending")
     document.querySelector('#accumulator-image').appendChild(unfilteredHoughImage);
 });
 
@@ -149,7 +152,7 @@ document.addEventListener("resultImageFinished", function(e) {
 
 document.addEventListener("status", function(e) {
     var statusDiv = document.querySelector('#status');
-    statusDiv.textContent = e.detail.message;
+    statusDiv.innerHTML  = e.detail.message;
 })
 
 

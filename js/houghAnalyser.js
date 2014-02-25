@@ -431,6 +431,7 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
     asynchronousCallsCounter: Number,
     overallMax: Number,
     filteredMax: Number,
+    maxCircumference: Number,
     houghImageData: Array,
     threshold: Number,
     init: function (parent) {
@@ -500,39 +501,39 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
         this.parent.resultImageFinished();
 
     },
-    generateHoughArray: function (calculateRequestNumber) {
-        var _this = this;
-        if (calculateRequestNumber != this.asynchronousCallsCounter) {
-            this.houghArray = [];
-            this.calculateRadiusIndex = 0;
-            this.overallMax = Number.MIN_VALUE;
-            return;
-        }
+generateHoughArray: function (calculateRequestNumber) {
+    var _this = this;
+    if (calculateRequestNumber != this.asynchronousCallsCounter) {
+        this.houghArray = [];
+        this.calculateRadiusIndex = 0;
+        this.overallMax = Number.MIN_VALUE;
+        return;
+    }
 
-        var percentageDone;
-        if (this.calculateRadiusIndex == 0) {
-            percentageDone = 0;
-        } else {
-            percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
-        }
+    var percentageDone;
+    if (this.calculateRadiusIndex == 0) {
+        percentageDone = 0;
+    } else {
+        percentageDone = Math.round((this.calculateRadiusIndex / (this.maxRadius - this.minRadius)) * 100);
+    }
 
-        this.parent.updateStatus("Accumulating data, " + percentageDone + "% done.");
+    this.parent.updateStatus("Accumulating data, " + percentageDone + "% done.");
 
-        this.calculateHoughArray(this.calculateRadiusIndex);
+    this.calculateHoughArray(this.calculateRadiusIndex);
 
-        if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
-            setTimeout(function () {
-                _this.generateHoughArray(calculateRequestNumber);
-            }, 0);
-        } else {
-            this.parent.updateStatus("");
-            this.houghImageData = [];
-            this.calculateRadiusIndex = 0;
+    if (this.calculateRadiusIndex < this.maxRadius - this.minRadius) {
+        setTimeout(function () {
+            _this.generateHoughArray(calculateRequestNumber);
+        }, 0);
+    } else {
+        this.parent.updateStatus("");
+        this.houghImageData = [];
+        this.calculateRadiusIndex = 0;
 
-            this.asynchronousCallsCounter += 1;
-            this.generateHoughImageData(this.asynchronousCallsCounter);
-        }
-    },
+        this.asynchronousCallsCounter += 1;
+        this.generateHoughImageData(this.asynchronousCallsCounter);
+    }
+},
     generateHoughImageData: function(calculateRequestNumber){
         var _this = this;
 
@@ -607,36 +608,36 @@ CircleHoughAnalyser.fn = CircleHoughAnalyser.prototype = {
 
         var maxAngle =  this.cosine.length;
 
-        for(var radiusIndex = startIndex; radiusIndex < endIndex; radiusIndex++){
-            if(!this.houghArray[radiusIndex]){
-                this.houghArray[radiusIndex] = [];
+for(var radiusIndex = startIndex; radiusIndex < endIndex; radiusIndex++){
+    if(!this.houghArray[radiusIndex]){
+        this.houghArray[radiusIndex] = [];
+    }
+    for(var edgePixelIndex = 0; edgePixelIndex < this.parent.numEdgePixels; edgePixelIndex++){
+        var edgePixel = this.parent.edgePixels[edgePixelIndex];
+
+        for(var angleIndex = 0; angleIndex < maxAngle; angleIndex++){
+            var x = Math.floor(edgePixel.x + this.radiiCos[radiusIndex][angleIndex]);
+            var y = Math.floor(edgePixel.y + this.radiiSin[radiusIndex][angleIndex]);
+
+            if(x < 0 || y < 0 || x > this.parent.originalImage.width || y > this.parent.originalImage.height){
+                continue;
             }
-            for(var edgePixelIndex = 0; edgePixelIndex < this.parent.numEdgePixels; edgePixelIndex++){
-                var edgePixel = this.parent.edgePixels[edgePixelIndex];
 
-                for(var angleIndex = 0; angleIndex < maxAngle; angleIndex++){
-                    var x = Math.floor(edgePixel.x + this.radiiCos[radiusIndex][angleIndex]);
-                    var y = Math.floor(edgePixel.y + this.radiiSin[radiusIndex][angleIndex]);
+            if(!this.houghArray[radiusIndex][x]){
+                this.houghArray[radiusIndex][x] = [];
+            }
+            if(!this.houghArray[radiusIndex][x][y]) {
+                this.houghArray[radiusIndex][x][y] = 0;
+            }
 
-                    if(x < 0 || y < 0 || x > this.parent.originalImage.width || y > this.parent.originalImage.height){
-                        continue;
-                    }
+            this.houghArray[radiusIndex][x][y] += 1;
 
-                    if(!this.houghArray[radiusIndex][x]){
-                        this.houghArray[radiusIndex][x] = [];
-                    }
-                    if(!this.houghArray[radiusIndex][x][y]) {
-                        this.houghArray[radiusIndex][x][y] = 0;
-                    }
-
-                    this.houghArray[radiusIndex][x][y] += 1;
-
-                    if(this.overallMax < this.houghArray[radiusIndex][x][y]){
-                        this.overallMax = this.houghArray[radiusIndex][x][y];
-                    }
-                }
+            if(this.overallMax < this.houghArray[radiusIndex][x][y]){
+                this.overallMax = this.houghArray[radiusIndex][x][y];
             }
         }
+    }
+}
         this.calculateRadiusIndex = endIndex;
     },
     calculateHoughImageData: function (array, maxValue, startIndex) {
@@ -833,6 +834,7 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
     detectedEllipses: Array,
     finalEllipses: Array,
     maxAccumulated: Number,
+    maxCircumference: Number,
     threshold: Number,
     init: function(parent){
         this.parent = parent;
@@ -861,7 +863,8 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
     start: function(){
         this.detectedEllipses = [];
         this.finalEllipses = [];
-        this.maxAccumulated = 0;
+        this.maxAccumulated = Number.MIN_VALUE;
+        this.maxCircumference = Number.MIN_VALUE;
         this.findEllipses(0);
     },
     findEllipses: function(startIndex){
@@ -889,20 +892,95 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             this.threshold = this.maxAccumulated - 5;
             this.generateControls();
             this.filterEllipses(this.detectedEllipses);
+
             this.parent.updateStatus("Found ellipses: " + this.detectedEllipses.length + ", filtered: " + this.finalEllipses.length);
-
-
-            console.log("Found ellipses: " + this.finalEllipses.length);
+            this.drawErrorGraphic();
             this.drawResult();
-//            for(var i = 0; i < this.detectedEllipses.length; i++){
-//                var current = this.detectedEllipses[i];
-//
-//                console.log("center: " + current.o.x + " " + current.o.y);
-//                console.log("w: " + current.t.x + " " + current.t.y + ", u: " + current.u.x + " " + current.u.y);
-//                console.log("alpha: " + current.alpha + ", beta: " + current.beta + ", theta: " + current.theta);
-//                console.log("accumulator: " + current.accumulator[current.beta[0]] + ", circumference: " + current.circumference[current.beta[0]]);
-//            }
         }
+
+    },
+    drawErrorGraphic: function(){
+        var breiteBalken = 10;
+        var höheMaximal = 400;
+
+        var statusText = document.querySelector('#status').textContent;
+
+        statusText += "<p>max accumulated: " + this.maxAccumulated + ", max circumference: " + this.maxCircumference;
+
+        var graphicCanvas = document.createElement('canvas');
+
+        graphicCanvas.width = 3 * breiteBalken * this.finalEllipses.length;
+        if(graphicCanvas.width < 310){
+            graphicCanvas.width = 310;
+
+        }
+        graphicCanvas.height = 310;
+
+        var context = graphicCanvas.getContext('2d');
+        var factor = ((graphicCanvas.height - 10) / this.maxCircumference);
+
+        context.fillStyle= "rgb(200,200,200)";
+
+        context.fillRect(0,0,graphicCanvas.width, graphicCanvas.height);
+
+        context.beginPath();
+        context.moveTo(0, graphicCanvas.height - this.maxCircumference * factor);
+        context.lineTo(graphicCanvas.width, graphicCanvas.height - this.maxCircumference * factor);
+        context.strokeStyle = "rgb(0,255,0)";
+        context.lineWidth = 1.5;
+        context.stroke();
+        context.closePath();
+
+        context.beginPath();
+        context.moveTo(0, graphicCanvas.height - Math.round(this.maxAccumulated  * factor ));
+        context.lineTo(graphicCanvas.width, graphicCanvas.height -  Math.round(this.maxAccumulated * factor));
+        context.strokeStyle = "rgb(255,0,0)";
+        context.lineWidth = 1.5;
+        context.stroke();
+        context.closePath();
+
+        for(var index = 0; index < this.finalEllipses.length; index++){
+            var currentEllipse = this.finalEllipses[index];
+
+            statusText += "<p>Ellipse " + (index + 1);
+            statusText += "<br/>Accumulated: " + currentEllipse.accumulated + ", calculated circumference: :" + Math.round(currentEllipse.circumference);
+            statusText += "<br/>Center: " + Math.round(currentEllipse.o.x) + "|" + Math.round(currentEllipse.o.y) + ", angle: " +currentEllipse.theta + ", alpha: " + Math.round(currentEllipse.alpha) + ", beta: "+ Math.round(currentEllipse.beta) + " </p>";
+
+            var upperLeftAccumulatedX = index * 30;
+            var upperLeftAccumulatedY = graphicCanvas.height - Math.round(currentEllipse.accumulated * factor);
+
+            context.beginPath();
+
+            context.fillStyle= "rgb(255,0,0)";
+            context.strokeStyle = "rgb(200,0,0)";
+
+
+            context.fillRect(upperLeftAccumulatedX, upperLeftAccumulatedY, 10, graphicCanvas.height - upperLeftAccumulatedY);
+            context.strokeRect(upperLeftAccumulatedX, upperLeftAccumulatedY, 10, graphicCanvas.height - upperLeftAccumulatedY);
+
+
+            context.closePath();
+
+            var upperLeftCircumferenceX = upperLeftAccumulatedX + 10;
+            var upperLeftCircumferenceY = graphicCanvas.height - Math.round(currentEllipse.circumference * factor);
+
+            context.fillStyle= "rgb(0,255,0)";
+            context.strokeStyle = "rgb(0,200,0)";
+
+
+            context.beginPath();
+            context.fillRect(upperLeftCircumferenceX, upperLeftCircumferenceY, 10, graphicCanvas.height - upperLeftCircumferenceY);
+            context.closePath();
+
+            context.beginPath();
+            context.strokeRect(upperLeftCircumferenceX, upperLeftCircumferenceY, 10, graphicCanvas.height - upperLeftCircumferenceY);
+            context.closePath();
+
+        }
+        this.parent.updateStatus(statusText);
+        this.parent.houghImageData[0] = context.getImageData(0,0,graphicCanvas.width, graphicCanvas.height);
+        this.parent.houghImageFinished();
+
 
     },
     drawResult: function(){
@@ -937,12 +1015,14 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
         this.parent.resultImage = canvas;
         this.parent.resultImageFinished();
 
+
     },
     filterEllipses: function(input){
 
         if(input.length == 0){
             return;
         }
+
 
         var first = input[0];
 
@@ -982,6 +1062,8 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
                 continue;
             }
             if(current.accumulated == heighestAccumulatorValue){
+
+
                 filteredNeighbours.push(current);
             }
         }
@@ -1008,6 +1090,8 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             var betaSum = 0;
             var thetaSum = 0;
 
+            var circumferenceSum = 0;
+
             for(var i = 0; i < filteredNeighbours.length; i++){
                 var current = closeNeighbours[i];
 
@@ -1023,6 +1107,7 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
                 alphaSum += current.alpha;
                 betaSum += current.beta;
                 thetaSum += current.theta;
+                circumferenceSum += current.circumference;
             }
 
             finalEllipse.o = [];
@@ -1045,12 +1130,16 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
             finalEllipse.theta = Math.round(thetaSum / filteredNeighbours.length);
 
             finalEllipse.accumulated = heighestAccumulatorValue;
+            finalEllipse.circumference = Math.round(circumferenceSum / filteredNeighbours.length);
         }
 
         if(!finalEllipse.o.x){
-            console.log("zu geringer threshold");
+            //console.log("zu geringer threshold");
         } else {
             this.finalEllipses.push(finalEllipse);
+            if(finalEllipse.circumference > this.maxCircumference){
+                this.maxCircumference = finalEllipse.circumference;
+            }
         }
 
 
@@ -1157,11 +1246,12 @@ EllipseHoughAnalyser.fn = EllipseHoughAnalyser.prototype = {
 
         this.finalEllipses = [];
 
+        this.maxCircumference = Number.MIN_VALUE;
+
         this.filterEllipses(this.detectedEllipses);
+
         this.parent.updateStatus("Found ellipses: " + this.detectedEllipses.length + ", filtered: " + this.finalEllipses.length);
-
-
-        console.log("Found ellipses: " + this.finalEllipses.length);
+        this.drawErrorGraphic();
         this.drawResult();
     },
     generateControls: function () {

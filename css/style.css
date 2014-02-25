@@ -30,6 +30,6 @@ ul.input form {
     padding: 5px;
 }
 
-.imageContainer img{
-
+#status{
+    text-align: right;
 }
